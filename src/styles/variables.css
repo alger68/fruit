@@ -1,0 +1,50 @@
+:root {
+  /* Colors - Fruity Palette */
+  --color-primary: 220 13% 18%; /* Dark Slate for text */
+  --color-secondary: 162 48% 45%; /* Fresh Green */
+  --color-accent: 340 82% 52%; /* Berry Red */
+  --color-accent-light: 340 82% 95%; /* Light Berry */
+  --color-background: 40 20% 97%; /* Warm Off-white */
+  --color-surface: 0 0% 100%; /* White */
+  
+  --color-text-main: 220 13% 18%;
+  --color-text-muted: 220 10% 40%;
+  --color-border: 220 10% 90%;
+
+  /* Typography */
+  --font-family-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-family-display: 'Outfit', sans-serif;
+  
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-base: 1rem;
+  --font-size-lg: 1.125rem;
+  --font-size-xl: 1.25rem;
+  --font-size-2xl: 1.5rem;
+  --font-size-3xl: 2rem;
+  --font-size-4xl: 3rem;
+
+  /* Spacing */
+  --spacing-1: 0.25rem;
+  --spacing-2: 0.5rem;
+  --spacing-3: 0.75rem;
+  --spacing-4: 1rem;
+  --spacing-6: 1.5rem;
+  --spacing-8: 2rem;
+  --spacing-12: 3rem;
+  --spacing-16: 4rem;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  
+  /* Radius */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 1rem;
+  --radius-full: 9999px;
+  
+  /* Transitions */
+  --transition-base: 0.2s ease-in-out;
+}
