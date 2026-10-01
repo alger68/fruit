@@ -162,8 +162,9 @@ HDR = f"回覆資料!$A$1:${MAXCOL}$1"
 DATA = f"回覆資料!$A$2:${MAXCOL}${MAXROW}"
 
 
-def build_stats(test_data=False):
-    heads = ["ID", "Start time", "Completion time", "Email", "Name"]
+def build_stats(test_data=False, google=False):
+    delim = ", " if google else ";"  # how multi-select answers are joined in the export
+    heads = ["時間戳記"] if google else ["ID", "Start time", "Completion time", "Email", "Name"]
     heads += [title(pid, t) for pid, t, _, _ in PROFILE]
     heads += [title(q["id"], q["text"]) for q in QS]
     colno = {h.split(". ")[0]: c for c, h in enumerate(heads, 1) if ". " in h}
@@ -194,6 +195,23 @@ def build_stats(test_data=False):
         "• 單選題「其他(自填)」人數 = 作答人數減去各選項人數;多選題的自填內容請直接在回覆資料查看。",
         f"• 支援最多 {MAXROW - 1} 份回覆、約 100 欄。不要在回覆資料之外的分頁手動改公式。",
     ]
+    if google:
+        notes = [
+            "Global AR 問卷:回收統計(Google 試算表版)",
+            "",
+            "使用方式",
+            "1. 在「夥伴名單」填入全部要發送的夥伴(代碼、名稱、國家、身份)。代碼要和發給夥伴的一致。",
+            "2. 在「設定」分頁 B6 貼上 Google 表單的「回覆試算表」網址(建立表單時程式會印出)。B7 是回覆工作表名稱,通常是「表單回應 1」。",
+            "3. 「回覆資料」A1 會自動從回覆試算表匯入資料。第一次出現 #REF! 時,點該儲存格,按「允許存取」。之後資料即時更新,不需要貼上。",
+            "4. 「總覽」看回收率;「各題統計」看每題選項人數與比例(含子公司/合資、代理行分開)。",
+            "",
+            "注意",
+            "• 統計靠標題列開頭的「A1. 」這類題號前綴找欄位,表單題目文字請勿改動前綴。",
+            "• Google 表單把多選題答案用「, 」(逗號加空格)連接,本範本依此計算。",
+            "• 同一夥伴填多份時,「夥伴名單」的回覆份數會標紅;請在回覆試算表中刪除舊的一列再統計。",
+            "• 單選題「其他(自填)」人數 = 作答人數減去各選項人數;多選題的自填內容請直接在回覆資料查看。",
+            f"• 支援最多 {MAXROW - 1} 份回覆、約 100 欄。不要手動改「回覆資料」以外分頁的公式。",
+        ]
     for i, t in enumerate(notes, 1):
         c = wsx.cell(i, 1, t)
         c.alignment = Alignment(wrap_text=True, vertical="top")
@@ -209,7 +227,10 @@ def build_stats(test_data=False):
     put(wset, 2, ["代理行選項文字", AGENT_OPT])
     put(wset, 3, ["R0 所在欄", f'=IFERROR(MATCH("R0. *",{HDR},0),0)'])
     put(wset, 4, ["夥伴代碼所在欄", f'=IFERROR(MATCH("P1. *",{HDR},0),0)'])
-    put(wset, 5, ["說明", "選項文字須與 Forms 的 R0 選項完全一致;一般不需修改"])
+    put(wset, 5, ["說明", "選項文字須與表單的 R0 選項完全一致;一般不需修改"])
+    if google:
+        put(wset, 6, ["回覆試算表網址", "(請貼上 Google 表單的回覆試算表網址)"])
+        put(wset, 7, ["回覆工作表名稱", "表單回應 1"])
     widths(wset, [24, 60])
     R0COL, CODECOL = "設定!$B$3", "設定!$B$4"
     R0RNG = rng(R0COL, "R0")
@@ -238,11 +259,16 @@ def build_stats(test_data=False):
 
     # ---- 回覆資料 (paste area)
     wd = wb.create_sheet("回覆資料")
-    for c, h in enumerate(heads, 1):
-        x = wd.cell(1, c, h)
-        x.fill, x.font = GREY, Font(bold=True)
-        x.alignment = Alignment(wrap_text=True, vertical="top")
-        wd.column_dimensions[L(c)].width = 22
+    if google and not test_data:
+        # Whole response table is pulled live from the Form's response spreadsheet.
+        wd["A1"] = f'=IFERROR(IMPORTRANGE(設定!$B$6,"\'"&設定!$B$7&"\'!A1:{MAXCOL}{MAXROW}"),"請在「設定」貼上回覆試算表網址並允許存取")'
+        wd.column_dimensions["A"].width = 22
+    else:
+        for c, h in enumerate(heads, 1):
+            x = wd.cell(1, c, h)
+            x.fill, x.font = GREY, Font(bold=True)
+            x.alignment = Alignment(wrap_text=True, vertical="top")
+            wd.column_dimensions[L(c)].width = 22
     wd.freeze_panes = "A2"
 
     # ---- 總覽
@@ -291,7 +317,7 @@ def build_stats(test_data=False):
         r += 1
         opt_start = r
         for opt in q["options"]:
-            m = f'ISNUMBER(FIND(";"&$B{r}&";",";"&{col}&";"))'
+            m = f'ISNUMBER(FIND("{delim}"&$B{r}&"{delim}","{delim}"&{col}&"{delim}"))'
             put(wq, r, [q["id"], opt, "", None, None, None, None, ""])
             wq.cell(r, 4, f'=IF($H${qrow}=0,0,SUMPRODUCT({m}*1))')
             wq.cell(r, 5, f'=IF($D${qrow}=0,"",D{r}/$D${qrow})')
@@ -333,7 +359,7 @@ def build_stats(test_data=False):
         codes = [f"P{i:03d}" for i in range(1, 9)] + [f"P{i:03d}" for i in range(11, 23)] + ["P011", "ZZZ999"]
         for n, code in enumerate(codes, 1):
             sub = code <= "P010"
-            row = {"ID": n, "Start time": "2026-11-01", "Completion time": "2026-11-01", "Email": "anonymous", "Name": ""}
+            row = {"時間戳記": "2026-11-01"} if google else {"ID": n, "Start time": "2026-11-01", "Completion time": "2026-11-01", "Email": "anonymous", "Name": ""}
             row[title("P1", PROFILE[0][1])] = code
             row[title("P2", PROFILE[1][1])] = "Co " + code
             row[title("P3", PROFILE[2][1])] = "測試國"
@@ -345,7 +371,7 @@ def build_stats(test_data=False):
                     continue
                 if q["type"] == "multi":
                     k = random.randint(1, min(3, len(q["options"])))
-                    val = ";".join(random.sample(q["options"], k)) + ";"
+                    val = delim.join(random.sample(q["options"], k)) + ("" if google else delim)
                 else:
                     val = random.choice(q["options"])
                     if q["allowOther"] and random.random() < 0.15:
@@ -356,8 +382,12 @@ def build_stats(test_data=False):
             for ci, h in enumerate(heads, 1):
                 if h in row:
                     wd.cell(ri, ci, row[h])
-        json.dump(rows, open(f"{OUT_DIR}/_test_rows.json", "w", encoding="utf-8"), ensure_ascii=False)
-        path = f"{OUT_DIR}/_test_stats.xlsx"
+        tag = "g" if google else ""
+        json.dump(rows, open(f"{OUT_DIR}/_test_{tag}rows.json", "w", encoding="utf-8"), ensure_ascii=False)
+        path = f"{OUT_DIR}/_test_{tag}stats.xlsx"
+    elif google:
+        os.makedirs("docs/google-forms", exist_ok=True)
+        path = "docs/google-forms/Global_AR_回收統計_Google試算表版.xlsx"
     else:
         path = f"{OUT_DIR}/Global_AR_回收統計範本.xlsx"
     wb.save(path)
