@@ -88,9 +88,15 @@ function createGlobalArForm() {
   Logger.log('回覆試算表: ' + ss.getUrl());
 }
 """
+
+
+def one_per_line(items):
+    return "[\n" + ",\n".join("  " + json.dumps(i, ensure_ascii=False, separators=(",", ":")) for i in items) + "\n]"
+
+
 gs = (GS.replace("__DESCRIPTION__", json.dumps(DESCRIPTION, ensure_ascii=False))
-      .replace("__PROFILE__", json.dumps(PROFILE, ensure_ascii=False, indent=2))
-      .replace("__QUESTIONS__", json.dumps(slim, ensure_ascii=False, indent=2)))
+      .replace("__PROFILE__", one_per_line(PROFILE))
+      .replace("__QUESTIONS__", one_per_line(slim)))
 open(f"{OUT}/create_form.gs", "w", encoding="utf-8").write(gs)
 
 PREVIEW = open("scripts/google_form_preview_template.html", encoding="utf-8").read()
