@@ -69,6 +69,8 @@ app.post('/api/orders', (req, res) => {
     }
 });
 
+app.use('/api/survey', require('./survey'));
+
 app.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
 });
