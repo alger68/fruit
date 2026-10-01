@@ -367,3 +367,50 @@ def build_stats(test_data=False):
 if __name__ == "__main__":
     print(build_forms())
     print(build_stats(test_data="--test-data" in sys.argv))
+
+
+# ---------------------------------------------------------------- business review sheet
+def build_review():
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "業務審閱表"
+    header(ws, 1, ["頁面", "題號", "題目", "題型", "選項(草案)", "必填", "審閱結果", "修改意見(題目 / 選項 / 是否必填)", "審閱人"])
+    r = 2
+    for q in QS:
+        if q["id"] == "R0":
+            page = "1 基本資料與身份"
+        else:
+            page = f"{PAGE[q['section']]} {q['section']}"
+        kind = "多選" if q["type"] == "multi" else "單選"
+        opts = q["options"] + (["其他(請說明)"] if q["allowOther"] else [])
+        put(ws, r, [page, q["id"], q["text"], kind, "\n".join(opts), "是" if (q["required"] or q["id"] == "R0") else "否", None, None, None])
+        for c in (7, 8, 9):
+            ws.cell(r, c).fill = PatternFill("solid", fgColor="FFF2CC")
+        r += 1
+    dv = DataValidation(type="list", formula1='"OK,需修改,建議刪除"', allow_blank=True)
+    ws.add_data_validation(dv)
+    dv.add(f"G2:G{r - 1}")
+    widths(ws, [26, 7, 52, 7, 44, 6, 12, 40, 12])
+    ws.freeze_panes = "D2"
+    ws.auto_filter.ref = f"A1:I{r - 1}"
+    wi = wb.create_sheet("審閱說明", 0)
+    for i, t in enumerate([
+        "Global AR 問卷:選項審閱表(給業務)",
+        "",
+        "請逐題看「選項(草案)」,在「審閱結果」選 OK / 需修改 / 建議刪除;有意見請寫在右邊欄位。",
+        "重點請看:選項是否符合實際作業用語、有沒有漏掉常見情況、哪些題不適合讓夥伴自己填。",
+        "「必填」為「是」的題目,夥伴不填就無法送出;覺得不該必填的請寫意見。",
+        "選項來源:優先採原題括號內的舉例,其餘為依一般航運代理行作業擬定的草案。",
+    ], 1):
+        c = wi.cell(i, 1, t)
+        c.alignment = Alignment(wrap_text=True, vertical="top")
+        if i == 1:
+            c.font = Font(bold=True, size=14)
+    wi.column_dimensions["A"].width = 100
+    path = f"{OUT_DIR}/Global_AR_業務審閱表.xlsx"
+    wb.save(path)
+    return path
+
+
+if __name__ == "__main__" and "--test-data" not in sys.argv:
+    print(build_review())
