@@ -2,6 +2,7 @@
  * Global AR 問卷:建立 Google 表單
  * 使用方式:script.google.com -> 新增專案 -> 貼上本檔 -> 選函式 createGlobalArForm -> 執行 -> 授權。
  * 完成後,到「執行記錄」複製表單網址。重複執行會建立多份表單。
+ * 本程式只需要「Google 表單」權限。回覆試算表請在表單的「回應」分頁按「連結到試算表」自行建立。
  * 本檔由 scripts/build_google_form.py 自動產生,請勿手動改題目(改 shared/survey-questions.json 後重新產生)。
  */
 var DESCRIPTION = "為建立一致的全球應收帳款(AR)作業標準,請協助填寫本問卷。全部為選擇題,約需 20 至 30 分鐘。標 * 為必填。若選項無法描述貴單位的做法,請選「其他」並簡短說明。";
@@ -118,10 +119,6 @@ function createGlobalArForm() {
     r0.createChoice(r0q.options[1], pages[sections[1]])
   ]);
 
-  var ss = SpreadsheetApp.create('Global AR 問卷回覆');
-  form.setDestination(FormApp.DestinationType.SPREADSHEET, ss.getId());
-
   Logger.log('填寫連結(給夥伴): ' + form.getPublishedUrl());
   Logger.log('編輯連結(僅限你): ' + form.getEditUrl());
-  Logger.log('回覆試算表: ' + ss.getUrl());
 }
