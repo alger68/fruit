@@ -1,0 +1,164 @@
+<title>Global AR 問卷預覽</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: a form-shaped column on a tinted ground, a sticky step bar above it, a notes panel below. */
+:root {
+  --bg: #eef2f1;
+  --surface: #ffffff;
+  --fg: #1d2b2a;
+  --muted: #5d6f6d;
+  --line: #d3dcda;
+  --accent: #0f766e;
+  --accent-soft: #d9efeb;
+  --warn: #b4351f;
+  --font-body: "Noto Sans TC", system-ui, -apple-system, "PingFang TC", "Microsoft JhengHei", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1716; --surface: #18221f; --fg: #e4eeec; --muted: #9bb0ad; --line: #2b3b38;
+    --accent: #4fd1c0; --accent-soft: #163a35; --warn: #ff8f78; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1716; --surface: #18221f; --fg: #e4eeec; --muted: #9bb0ad; --line: #2b3b38;
+  --accent: #4fd1c0; --accent-soft: #163a35; --warn: #ff8f78; color-scheme: dark;
+}
+body { background: var(--bg); color: var(--fg); font-family: var(--font-body); line-height: 1.6; }
+.wrap { max-width: 720px; margin: 0 auto; padding-inline: 16px; padding-block: 20px 56px; }
+h1 { font-size: 1.5rem; line-height: 1.3; margin: 0 0 6px; text-wrap: balance; }
+.lead { color: var(--muted); margin: 0 0 16px; }
+.bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); padding-block: 10px; display: grid; gap: 10px; }
+.who { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 0.875rem; }
+.who span { color: var(--muted); }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--surface); }
+.seg button { border: 0; background: transparent; color: var(--fg); font: inherit; font-size: 0.875rem; padding: 6px 12px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--surface); }
+.steps { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; }
+.steps button { flex: none; border: 1px solid var(--line); background: var(--surface); color: var(--fg); font: inherit; font-size: 0.8125rem; padding: 6px 10px; border-radius: 8px; cursor: pointer; white-space: nowrap; }
+.steps button[aria-current="step"] { border-color: var(--accent); background: var(--accent-soft); font-weight: 700; }
+.steps button[hidden] { display: none; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.page-title { margin: 18px 0 4px; font-size: 1.125rem; border-bottom: 3px solid var(--accent); padding-bottom: 8px; }
+.note { font-size: 0.875rem; color: var(--muted); margin: 8px 0 14px; }
+.branch { border: 1px dashed var(--accent); background: var(--accent-soft); border-radius: 8px; padding: 10px 12px; font-size: 0.875rem; margin: 10px 0 14px; }
+.q { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px; margin-bottom: 12px; }
+.q h3 { font-size: 1rem; font-weight: 500; margin: 0 0 10px; }
+.q .id { font-family: var(--font-mono); font-size: 0.8125rem; color: var(--muted); margin-right: 6px; }
+.q .req { color: var(--warn); margin-left: 4px; }
+.opt { display: flex; align-items: flex-start; gap: 10px; padding: 5px 0; cursor: pointer; }
+.opt input { margin-top: 5px; accent-color: var(--accent); flex: none; }
+.opt .other-line { flex: 1; min-width: 0; border-bottom: 1px solid var(--line); height: 1.4em; }
+.tag { display: inline-block; font-size: 0.75rem; border: 1px solid var(--line); border-radius: 99px; padding: 0 8px; color: var(--muted); margin-left: 6px; }
+.text-q { border-bottom: 1px solid var(--line); height: 2em; color: var(--muted); font-size: 0.875rem; }
+.nav { display: flex; justify-content: space-between; gap: 12px; margin-top: 16px; }
+.nav button { font: inherit; border: 1px solid var(--line); background: var(--surface); color: var(--fg); padding: 8px 18px; border-radius: 8px; cursor: pointer; }
+.nav button.primary { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+.nav button:disabled { opacity: 0.4; cursor: default; }
+.how { margin-top: 28px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px; }
+.how h2 { font-size: 1rem; margin: 0 0 8px; }
+.how ol { margin: 0; padding-left: 1.25em; }
+.how li { margin-bottom: 4px; }
+.how code { font-family: var(--font-mono); font-size: 0.8125rem; background: var(--accent-soft); padding: 1px 5px; border-radius: 4px; }
+</style>
+
+<div class="wrap">
+  <h1>Global AR 問卷盤點</h1>
+  <p class="lead" id="desc"></p>
+  <div class="bar">
+    <div class="who"><span>預覽身份:</span>
+      <div class="seg" role="group" aria-label="預覽身份">
+        <button id="who-sub" aria-pressed="false">子公司 / 合資</button>
+        <button id="who-agent" aria-pressed="true">代理行</button>
+      </div>
+      <span id="count"></span>
+    </div>
+    <div class="steps" id="steps"></div>
+  </div>
+  <div id="page"></div>
+  <div class="nav"><button id="prev">上一頁</button><button id="next" class="primary">下一頁</button></div>
+
+  <div class="how">
+    <h2>這是預覽,不是真正的表單</h2>
+    <p class="note" style="margin-top:0">題目、選項、必填與分支都和即將建立的 Google 表單一致。確認後,用附帶的 Apps Script 一次建立真正的表單:</p>
+    <ol>
+      <li>開啟 <code>script.google.com</code>,新增專案。</li>
+      <li>貼上 <code>create_form.gs</code> 的內容(在 GitHub 的 <code>docs/google-forms/</code>)。</li>
+      <li>選擇函式 <code>createGlobalArForm</code>,按「執行」並授權。</li>
+      <li>在「執行記錄」複製填寫連結、編輯連結與回覆試算表網址。</li>
+    </ol>
+  </div>
+</div>
+
+<script>
+var DATA = __DATA__;
+var QS = DATA.questions;
+var R0 = QS[0];
+var pageNames = [];
+QS.slice(1).forEach(function (q) { if (pageNames.indexOf(q.section) < 0) pageNames.push(q.section); });
+var isSub = false, cur = 0;
+
+function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+
+// page index 0 = profile; 1..n = sections; section A is skipped for agents
+function visiblePages() {
+  var list = [0];
+  pageNames.forEach(function (n, i) { if (isSub || n.indexOf("A.") !== 0) list.push(i + 1); });
+  return list;
+}
+
+function qHtml(q) {
+  var type = q.multi ? "checkbox" : "radio";
+  var h = '<div class="q"><h3><span class="id">' + esc(q.id) + '</span>' + esc(q.text) + (q.required ? '<span class="req" aria-label="必填">*</span>' : '') +
+    (q.multi ? '<span class="tag">可複選</span>' : '') + '</h3>';
+  q.options.forEach(function (o) { h += '<label class="opt"><input type="' + type + '" name="' + q.id + '"><span>' + esc(o) + '</span></label>'; });
+  if (q.other) h += '<label class="opt"><input type="' + type + '" name="' + q.id + '"><span>其他:</span><span class="other-line"></span></label>';
+  return h + '</div>';
+}
+
+function render() {
+  var pages = visiblePages();
+  if (pages.indexOf(cur) < 0) cur = pages[0];
+  var pos = pages.indexOf(cur);
+  var total = QS.filter(function (q) { return q.id !== "R0" && (isSub || !q.subOnly); }).length + DATA.profile.length + 1;
+  document.getElementById("count").textContent = "此身份共 " + total + " 題";
+  document.getElementById("who-sub").setAttribute("aria-pressed", isSub);
+  document.getElementById("who-agent").setAttribute("aria-pressed", !isSub);
+
+  var steps = document.getElementById("steps"); steps.innerHTML = "";
+  pages.forEach(function (p, i) {
+    var b = document.createElement("button");
+    b.textContent = (p + 1) + " " + (p === 0 ? "基本資料" : pageNames[p - 1].split(" ")[0].replace(".", ""));
+    if (p === cur) b.setAttribute("aria-current", "step");
+    b.onclick = function () { cur = p; render(); window.scrollTo(0, 0); };
+    steps.appendChild(b);
+  });
+
+  var out = "";
+  if (cur === 0) {
+    out += '<h2 class="page-title">第 1 頁:基本資料與身份</h2>';
+    DATA.profile.forEach(function (p) {
+      out += '<div class="q"><h3><span class="id">' + p.id + '</span>' + esc(p.text) + (p.required ? '<span class="req">*</span>' : '') + '</h3><div class="text-q">簡答文字</div></div>';
+    });
+    out += qHtml(R0);
+    out += '<div class="branch"><strong>分支設定:</strong>選「' + esc(R0.options[0]) + '」前往 A 區(第 2 頁);選「' + esc(R0.options[1]) + '」直接前往 B 區(第 3 頁)。</div>';
+  } else {
+    var name = pageNames[cur - 1];
+    out += '<h2 class="page-title">第 ' + (pages.indexOf(cur) + 1 + (isSub ? 0 : 0)) + ' 頁:' + esc(name) + '</h2>';
+    if (name.indexOf("A.") === 0) out += '<p class="note">僅「子公司 / 合資」會看到這一頁。</p>';
+    QS.filter(function (q) { return q.section === name; }).forEach(function (q) { out += qHtml(q); });
+  }
+  document.getElementById("page").innerHTML = out;
+  document.getElementById("prev").disabled = pos === 0;
+  var nx = document.getElementById("next");
+  nx.textContent = pos === pages.length - 1 ? "提交(預覽)" : "下一頁";
+  nx.disabled = pos === pages.length - 1;
+}
+
+document.getElementById("desc").textContent = DATA.description;
+document.getElementById("who-sub").onclick = function () { isSub = true; render(); };
+document.getElementById("who-agent").onclick = function () { isSub = false; render(); };
+document.getElementById("prev").onclick = function () { var p = visiblePages(); cur = p[p.indexOf(cur) - 1]; render(); window.scrollTo(0, 0); };
+document.getElementById("next").onclick = function () { var p = visiblePages(); cur = p[p.indexOf(cur) + 1]; render(); window.scrollTo(0, 0); };
+render();
+</script>

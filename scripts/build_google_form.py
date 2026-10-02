@@ -1,0 +1,97 @@
+"""Build the Google Forms kit from shared/survey-questions.bilingual.json (Chinese / English).
+
+Usage: python3 scripts/build_google_form.py
+Writes docs/google-forms/create_form.gs (Apps Script that creates the real Form in the
+user's Google account) and docs/google-forms/preview.html (static preview of the form).
+"""
+import json
+import os
+
+OUT = "docs/google-forms"
+doc = json.load(open("shared/survey-questions.bilingual.json", encoding="utf-8"))
+QS = doc["questions"]
+os.makedirs(OUT, exist_ok=True)
+
+REQUIRED_PROFILE = {"P1": True, "P2": True, "P3": True, "P4": False}
+PROFILE = [{"id": p["id"], "text": p["text"], "required": REQUIRED_PROFILE[p["id"]]} for p in doc["profile"]]
+DESCRIPTION = doc["description"]
+
+slim = [{
+    "id": q["id"], "section": q["section"], "text": q["text"], "multi": q["type"] == "multi",
+    "options": q["options"], "other": q["allowOther"],
+    "required": bool(q["required"] or q["id"] == "R0"), "subOnly": q["audience"] != "all",
+} for q in QS]
+
+GS = r"""/**
+ * Global AR 問卷:建立 Google 表單
+ * 使用方式:script.google.com -> 新增專案 -> 貼上本檔 -> 選函式 createGlobalArForm -> 執行 -> 授權。
+ * 完成後,到「執行記錄」複製表單網址。重複執行會建立多份表單。
+ * 本程式只需要「Google 表單」權限。回覆試算表請在表單的「回應」分頁按「連結到試算表」自行建立。
+ * 本檔由 scripts/build_google_form.py 自動產生,請勿手動改題目(改 shared/survey-questions.json 與 scripts/translations_en.py 後重新產生)。
+ */
+var DESCRIPTION = __DESCRIPTION__;
+var PROFILE = __PROFILE__;
+var QUESTIONS = __QUESTIONS__;
+
+function createGlobalArForm() {
+  var form = FormApp.create('Global AR 問卷盤點 / Global AR Survey');
+  form.setDescription(DESCRIPTION);
+  form.setProgressBar(true);
+  form.setCollectEmail(false);
+  form.setLimitOneResponsePerUser(false);
+  form.setConfirmationMessage('感謝您的填寫,問卷已送出。 / Thank you. Your response has been recorded.');
+
+  // Page 1: profile and routing question
+  PROFILE.forEach(function (p) {
+    form.addTextItem().setTitle(p.id + '. ' + p.text).setRequired(p.required);
+  });
+  var r0q = QUESTIONS[0];
+  var r0 = form.addMultipleChoiceItem()
+    .setTitle(r0q.id + '. ' + r0q.text)
+    .setChoiceValues(r0q.options)
+    .setRequired(true);
+
+  // Pages A..H. Each section starts with a page break.
+  var pages = {};
+  var currentSection = null;
+  QUESTIONS.slice(1).forEach(function (q) {
+    if (q.section !== currentSection) {
+      currentSection = q.section;
+      pages[currentSection] = form.addPageBreakItem().setTitle(currentSection);
+    }
+    var title = q.id + '. ' + q.text;
+    if (q.multi) {
+      form.addCheckboxItem().setTitle(title).setChoiceValues(q.options)
+        .showOtherOption(q.other).setRequired(q.required);
+    } else {
+      form.addMultipleChoiceItem().setTitle(title).setChoiceValues(q.options)
+        .showOtherOption(q.other).setRequired(q.required);
+    }
+  });
+
+  // Branching: subsidiary/JV goes to section A, agent skips to section B.
+  var sections = Object.keys(pages);
+  r0.setChoices([
+    r0.createChoice(r0q.options[0], pages[sections[0]]),
+    r0.createChoice(r0q.options[1], pages[sections[1]])
+  ]);
+
+  Logger.log('填寫連結(給夥伴): ' + form.getPublishedUrl());
+  Logger.log('編輯連結(僅限你): ' + form.getEditUrl());
+}
+"""
+
+
+def one_per_line(items):
+    return "[\n" + ",\n".join("  " + json.dumps(i, ensure_ascii=False, separators=(",", ":")) for i in items) + "\n]"
+
+
+gs = (GS.replace("__DESCRIPTION__", json.dumps(DESCRIPTION, ensure_ascii=False))
+      .replace("__PROFILE__", one_per_line(PROFILE))
+      .replace("__QUESTIONS__", one_per_line(slim)))
+open(f"{OUT}/create_form.gs", "w", encoding="utf-8").write(gs)
+
+PREVIEW = open("scripts/google_form_preview_template.html", encoding="utf-8").read()
+html = (PREVIEW.replace("__DATA__", json.dumps({"description": DESCRIPTION, "profile": PROFILE, "questions": slim}, ensure_ascii=False)))
+open(f"{OUT}/preview.html", "w", encoding="utf-8").write(html)
+print(len(slim), "questions ->", OUT)

@@ -120,3 +120,7 @@ dist
 
 # Project specific
 server/data/orders.json
+
+# Survey / order data (contains partner responses)
+server/data/
+scripts/__pycache__/
