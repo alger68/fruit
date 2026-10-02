@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>競走動作分析 | RaceWalk Lab</title>
+<meta name="description" content="匯入影片，複查關鍵幀，追蹤每次競走訓練。">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app-shell">
+  <header class="app-header">
+    <a class="brand" href="./">
+      <span class="brand-icon">⚡</span>
+      <span><strong>RaceWalk <b>Lab</b></strong><small>競走動作分析</small></span>
+    </a>
+    <span class="private-label"><span class="dot"></span>私人訓練工作室・資料只存在此裝置</span>
+  </header>
+
+  <main>
+    <div class="page-heading">
+      <div>
+        <span class="eyebrow">VIDEO ANALYSIS / PERSONAL BASELINE</span>
+        <h1>把每一步，看得更清楚。</h1>
+        <p>原片、骨架與關鍵幀放在一起，讓下一次練習有明確依據。</p>
+      </div>
+      <div class="button-row">
+        <button class="btn" id="btnImport">匯入紀錄</button>
+        <button class="btn primary" id="btnPick">新增影片</button>
+      </div>
+    </div>
+    <input type="file" id="videoInput" accept="video/mp4,video/quicktime,video/webm,.mov,.m4v" hidden>
+    <input type="file" id="jsonInput" accept="application/json,.json" hidden>
+
+    <div class="nav-row">
+      <nav class="tabs" role="tablist">
+        <button role="tab" data-tab="work" class="active">分析工作台</button>
+        <button role="tab" data-tab="report">本次報告</button>
+        <button role="tab" data-tab="history">訓練紀錄</button>
+        <button role="tab" data-tab="guide">拍攝指南</button>
+      </nav>
+      <div class="save-group">
+        <span class="meta" id="saveMeta">尚無分析紀錄</span>
+        <button class="btn sm" id="btnSave" disabled>儲存</button>
+      </div>
+    </div>
+
+    <!-- 工作台 -->
+    <section id="tab-work" class="tab-panel">
+      <div class="workspace-grid">
+        <aside>
+          <div class="card">
+            <div class="section-head"><h2>本次拍攝</h2><span class="step-tag">01</span></div>
+            <div class="form-grid">
+              <label class="field"><span>選手</span><input id="fAthlete" maxlength="80" value="選手"></label>
+              <label class="field"><span>日期</span><input id="fDate" type="date"></label>
+            </div>
+            <label class="field"><span>拍攝視角</span>
+              <select id="fView">
+                <option value="side-left">側面・左腳近鏡頭</option>
+                <option value="side-right">側面・右腳近鏡頭</option>
+                <option value="front">正面</option>
+                <option value="rear">後面</option>
+              </select>
+            </label>
+            <div class="form-grid">
+              <label class="field"><span>行進方向</span>
+                <select id="fDir"><option value="right">畫面左 → 右</option><option value="left">畫面右 → 左</option></select>
+              </label>
+              <label class="field"><span>速度組別</span>
+                <select id="fSpeed"><option value="easy">Easy 輕鬆</option><option value="race">Race 比賽</option><option value="fast">Fast 加速</option></select>
+              </label>
+            </div>
+            <label class="field"><span>實際配速（分:秒／公里）</span>
+              <input id="fPace" placeholder="例如 6:19">
+              <small>留空即未記錄，不以目標配速代替實測。</small>
+            </label>
+            <label class="field"><span>今天的髖部／步態狀況</span>
+              <select id="fBody"><option value="unknown">尚未確認</option><option value="none">無不適、無跛行</option><option value="yes">有不適、跛行或疼痛增加</option></select>
+            </label>
+            <details>
+              <summary>時間與取樣設定</summary>
+              <div class="form-grid">
+                <label class="field"><span>原始拍攝 fps</span>
+                  <select id="fFps"><option>24</option><option>25</option><option>30</option><option>50</option><option selected>60</option><option>120</option><option>240</option></select>
+                </label>
+                <label class="field"><span>每實際秒取樣</span>
+                  <select id="fSample"><option>10</option><option selected>15</option><option>30</option><option>60</option></select>
+                </label>
+              </div>
+              <label class="field"><span>原片慢放倍率</span>
+                <select id="fSlow"><option value="1" selected>1・一般速度</option><option value="2">2・已慢放2倍</option><option value="4">4・已慢放4倍</option><option value="8">8・已慢放8倍</option></select>
+                <small>拍攝1秒、檔案播放4秒則選4。若不清楚，勿勾選時間已確認。</small>
+              </label>
+              <label class="switch-field"><input type="checkbox" id="fConfirm"><span>已確認原始 fps 與慢放倍率</span></label>
+              <p class="meta">未確認時不計算實際步頻或毫秒。變動幀率與手機補幀仍需原始檔人工核對。</p>
+            </details>
+          </div>
+          <div class="mini-note"><p>第一次先拍無痛的 Easy 側面。先建立個人基準，再決定要修哪一個動作。</p></div>
+        </aside>
+
+        <div class="workspace-main">
+          <div class="card video-card">
+            <div class="section-head">
+              <div><h2>影片與動作點線</h2><p class="meta" id="fileName">匯入原片，開始第一筆分析</p></div>
+              <div class="mode-toggle">
+                <button class="btn sm active" data-mode="analysis">動作分析</button>
+                <button class="btn sm" data-mode="judge">Judge View</button>
+              </div>
+            </div>
+
+            <div class="upload-zone" id="dropZone">
+              <div class="upload-icon">🎬</div>
+              <h3>把競走影片放到這裡</h3>
+              <p>MP4／MOV／WebM · 每支 100 MB 內 · 建議 10–15 秒</p>
+              <button class="btn primary" id="btnPick2">選擇影片</button>
+              <span class="meta">骨架在此裝置分析，影片不會上傳。</span>
+            </div>
+
+            <div id="viewer" hidden>
+              <div class="stage"><video id="video" playsinline muted preload="auto"></video><canvas id="overlay"></canvas></div>
+              <div class="progress" id="progress" hidden><div class="bar"><i id="bar"></i></div><span class="meta" id="progressText"></span></div>
+              <div class="controls" id="controls" hidden>
+                <button class="btn sm" id="prev">◀</button>
+                <input type="range" id="scrub" min="0" max="0" value="0">
+                <button class="btn sm" id="next">▶</button>
+                <span class="meta" id="frameInfo"></span>
+              </div>
+              <div class="button-row left">
+                <button class="btn primary" id="btnAnalyze">開始分析</button>
+                <button class="btn" id="btnReplace">換一支影片</button>
+              </div>
+              <div class="chips" id="keyChips"></div>
+            </div>
+            <p class="status" id="status"></p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="tab-report" class="tab-panel" hidden></section>
+    <section id="tab-history" class="tab-panel" hidden></section>
+
+    <section id="tab-guide" class="tab-panel" hidden>
+      <div class="card guide">
+        <h2>拍攝指南</h2>
+        <ol>
+          <li><b>側面、機位固定：</b>手機放腳架，鏡頭高度約在髖部，距跑道 8–10 公尺，全身（頭到腳）入鏡。</li>
+          <li><b>與行進方向垂直：</b>選手從畫面一側走到另一側，並在設定中選對「行進方向」。</li>
+          <li><b>背景單純、光線均勻：</b>穿著與背景對比明顯，避免寬鬆衣物遮住膝蓋與腳踝。</li>
+          <li><b>高 fps 優先：</b>建議 60 fps 以上；要看是否騰空，120–240 fps 慢動作更可靠。</li>
+          <li><b>每次條件一致：</b>同一視角、同一速度組別（Easy / Race / Fast）才能和個人基準比較。</li>
+          <li><b>先拍 Easy：</b>無痛的 Easy 側面是第一筆基準。有疼痛或跛行請先停止，並在表單標記。</li>
+        </ol>
+        <h3>判讀須知</h3>
+        <ul>
+          <li>競走兩項規則：<b>不得騰空</b>（任一時刻至少一腳著地）；<b>前腳著地到垂直時膝需伸直</b>。</li>
+          <li>本工具以姿態估計做<b>篩查</b>，會有誤差，不是正式裁判判決；請以原片與教練複查為準。</li>
+          <li>騰空判斷在鏡頭有平移、地面不平或低 fps 時不可靠。</li>
+        </ul>
+      </div>
+    </section>
+  </main>
+
+  <footer class="app-footer"><span>RACEWALK LAB · 以個人基準追蹤每一步</span><span>AI 篩查與教練複查並行 · 非正式裁判判決</span></footer>
+</div>
+<script type="module" src="app.js"></script>
+</body>
+</html>
